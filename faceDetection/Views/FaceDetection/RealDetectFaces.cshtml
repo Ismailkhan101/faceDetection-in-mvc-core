@@ -1,0 +1,73 @@
+﻿
+
+<h2>Real-Time Face Detection</h2>
+
+<video id="video" width="640" height="480" autoplay></video>
+<canvas id="canvas" width="640" height="480" style="position: absolute; top: 0; left: 0;"></canvas>
+<button id="start">Start Detection</button>
+<button id="stop">Stop Detection</button>
+
+
+    <script>
+        let streaming = false;
+        let video = document.getElementById('video');
+        let canvas = document.getElementById('canvas');
+        let context = canvas.getContext('2d');
+        let intervalId;
+
+        // Access webcam
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(function (stream) {
+                video.srcObject = stream;
+                streaming = true;
+            })
+            .catch(function (err) {
+                console.error("Error accessing webcam: " + err);
+            });
+
+        // Start face detection
+        document.getElementById('start').onclick = function () {
+            if (streaming) {
+                intervalId = setInterval(detectFaces, 1000); // Detect every second
+            }
+        };
+
+        // Stop face detection
+        document.getElementById('stop').onclick = function () {
+            clearInterval(intervalId);
+        };
+
+        function detectFaces() {
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            canvas.toBlob(function (blob) {
+                var formData = new FormData();
+                formData.append('image', blob, 'snapshot.jpg');
+
+                fetch('@Url.Action("RealDetectFaces", "FaceDetection")', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.faces) {
+                        drawRectangles(data.faces);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error during face detection:', error);
+                });
+            }, 'image/jpeg');
+        }
+
+        function drawRectangles(faces) {
+            context.clearRect(0, 0, canvas.width, canvas.height);
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            faces.forEach(face => {
+                context.strokeStyle = "red";
+                context.lineWidth = 3;
+                context.strokeRect(face.x, face.y, face.width, face.height);
+            });
+        }
+    </script>
+

@@ -1,0 +1,63 @@
+﻿@{
+    ViewData["Title"] = "Real-Time Face Detection";
+}
+
+<h2>Real-Time Face Detection</h2>
+
+<video id="video" width="640" height="480" autoplay></video>
+<button id="capture">Detect Faces</button>
+
+<div id="result">
+    <img id="resultImage" style="display:none; max-width: 100%;" />
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            // Get video stream from webcam
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(function (stream) {
+                    document.getElementById('video').srcObject = stream;
+                })
+                .catch(function (err) {
+                    console.error("Error accessing webcam: " + err);
+                });
+
+            $('#capture').click(function () {
+                var canvas = document.createElement('canvas');
+                canvas.width = 640;
+                canvas.height = 480;
+                var context = canvas.getContext('2d');
+                context.drawImage(document.getElementById('video'), 0, 0, canvas.width, canvas.height);
+                canvas.toBlob(function(blob) {
+                    sendImage(blob);
+                }, 'image/jpeg');
+            });
+
+            function sendImage(imageBlob) {
+                var formData = new FormData();
+                formData.append('image', imageBlob, 'snapshot.jpg');
+
+                $.ajax({
+                    url: '@Url.Action("DetectFaces", "FaceDetection")',
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    xhr: function () {
+                        var xhr = new XMLHttpRequest();
+                        xhr.responseType = 'blob';
+                        return xhr;
+                    },
+                    success: function (data) {
+                        var url = window.URL.createObjectURL(data);
+                        $('#resultImage').attr('src', url).show();
+                    },
+                    error: function () {
+                        alert('An error occurred during face detection.');
+                    }
+                });
+            }
+        });
+    </script>
+}
